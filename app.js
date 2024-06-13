@@ -1,199 +1,161 @@
-//Set variable for url link
+// Use the d3 library to read the sample.json from the url
 const url= "https://static.bc-edx.com/data/dl-1-2/m14/lms/starter/samples.json";
-
-// creating variables for the relevant datasets.
-let samples;
-let metadata;
-let names;
-
 // Promise Pending
+const dataPromise = d3.json(url);
+console.log("Data Promise: ", dataPromise);
+
+// Fetch the JSON data and console log it
 d3.json(url).then(function(data) {
   console.log("data is", data)
+})
 
-    // assigning Samples, Metadata, and Names.
-    samples = data.samples;
-    metadata = data.metadata;
-    names = data.names;
+// To select the new sample
+var sampleSelector = d3.select("#selDataset")
+console.log("sampleSelector is",sampleSelector)
+
+function init() {
+    d3.json(url).then(function(data) {
+        // let sampleSelector  = d3.select("#selDataset")
+        // To get the sample names
+        let sampleName = data.names
+        console.log("sampleSelector is",sampleSelector)
+        // let sampleData = data.samples
+        console.log("sample names are", sampleName)
+        // Inserts the selected sample id 
+        for(let i=0;i<sampleName.length;i++){
+          var sampleId = sampleName[i]
+          sampleSelector.append("option").text(sampleId).property("value",sampleId)};
     
-    console.log("Samples: ",samples);
-    console.log("metadata: ",metadata);
+        barChart(sampleName[0]);
+        bubbleChart(sampleName[0]);
+        sampleMetadata(sampleName[0]);
+            })}
+          
+    init();
 
-    let selected_id = samples[0];
 
-    let sample_values = selected_id.sample_values.slice(0,10);
-    sample_values.reverse();
-    let otu_ids = selected_id.otu_ids.slice(0,10);
-    otu_ids.reverse();
-    let otu_labels = selected_id.otu_labels.slice(0,10);
-    otu_labels.reverse();
+    // Updates the charts when the sample is changed
+    function optionChanged(sampleId){
+        barChart(sampleId)
+        bubbleChart(sampleId)
+        sampleMetadata(sampleId)
+        console.log("value",sampleId)
+            }
 
-    otu_ids = otu_ids.map(id => `OTU ${id} `);
+    //  Horizontal Bar chart with the top 10 samples
+    function barChart(sampleId){
+        d3.json(url).then(function(data) {
+        // To get the samples data and store it in the array
+            let sampleData_bar = data.samples;
+            let get_samplevalues = 
+            console.log("sampledata is:",sampleData_bar)
+// Arrow function is used to filter and get the sample values, out_ids and otu_labels for that filtered sample id
+// To check if the id property of each sample object from the array sampleData is equal to the sampleId
+            let filteredValue_bar= sampleData_bar.filter(sample => sample.id == sampleId)
+            let sampleValData_bar = filteredValue_bar[0]
+            console.log("filtered value",filteredValue_bar)
+            console.log("samplevalue",sampleValData_bar)
+            let x_sampleValues_bar = sampleValData_bar.sample_values;
+            let y_otuIds_bar= sampleValData_bar.otu_ids;
+            let otuLabels_bar = sampleValData_bar.otu_labels;
+            // console.log("x is",x_sampleValues);
+        
+        //    console.log("y_otuIds", y_otuIds);
+        //    console.log("otuLabels",otuLabels);
 
-    // Default plots with the first id.
-    function init() {
+        // To display the top 10 OTUs based on the sample values
+           let x_sampleSlice_bar =x_sampleValues_bar.slice(0, 10).reverse();
+           let y_otuIdsSlice_bar = y_otuIds_bar.slice(0, 10).map(id => `OTU ${id}`).reverse();
+        //    let y_otuIdsSlice = y_otuIds.slice(0, 10).map(object => object.id).reverse();
+           let otuLabelsSlice_bar = otuLabels_bar.slice(0, 10).reverse();
+           console.log(x_sampleSlice_bar);
+           console.log(y_otuIdsSlice_bar);
+           console.log(otuLabelsSlice_bar);
+        // Trace1 for the Greek Data
+           let trace1 = {
+           x: x_sampleSlice_bar,
+           y: y_otuIdsSlice_bar,
+           text: otuLabelsSlice_bar,
+            name: "Belly-Button",
+            type: "bar",
+            orientation: "h"
+         };
+    
+    // Data array
+           let dataTrace = [trace1];
+    // Apply a title to the layout
+           let layout = {
+              title: "<b>Top 10 OTU(bacteria) found in Belly-Button<br> of each id</b><br>",
+              margin: {
+                l: 100,
+                r: 100,
+                t: 100,
+                b: 100 }
+            
+        }
+        Plotly.newPlot("bar", dataTrace, layout);
+    })};
+    barChart();
 
-      // Bar chart
-      let trace = [{
-          x: sample_values,
-          y: otu_ids,
-          hovertext: otu_labels,
-          type: "bar",
-          orientation: "h"
-      }];
-  
-      Plotly.newPlot("bar", trace);
+    function bubbleChart(sampleId){
+        d3.json(url).then(function(data) {
+            // To get the samples and store it in sampleData array
+           let sampleData = data.samples;
+        //    console.log("sample id", sampleId)
 
-      // Bubble Chart
-      sample_values = selected_id.sample_values;
-      otu_ids = selected_id.otu_ids;
-      otu_labels = selected_id.otu_labels;
-
-      let trace2 = [{
-          x: otu_ids,
-          y: sample_values,
-          text: otu_labels,
-          mode: "markers",
-          marker: {
-              opacity: 0.75,
-              size: sample_values,
-              color: otu_ids,
-              colorscale: "Earth",
-              sizeref: 1.32
-          }
-      }];
-
-      // Adding a title for the Bubble X-axis
-      let layout = {
-          xaxis: {
-              title: "OTU ID"
-          }
-      }
-
-       // Plotting the Bubble chart
-       Plotly.newPlot("bubble", trace2, layout);
-
-       // Metadata table
-       let table = d3.select("#sample-metadata");
-
-       // Creating rows in the Metadata Info table with ids for updating.
-       let row0 = table.append("tr").attr("id","id");
-       let row1 = table.append("tr").attr("id","ethnicity");
-       let row2 = table.append("tr").attr("id","gender");
-       let row3 = table.append("tr").attr("id","age");
-       let row4 = table.append("tr").attr("id","location");
-       let row5 = table.append("tr").attr("id","bbtype");
-       let row6 = table.append("tr").attr("id","wfreq");
-
-       // inserting the initial values for the first id in the dataset.
-       row0.text(`id: ${metadata[0].id}`);
-       row1.text(`ethnicity: ${metadata[0].ethnicity}`);
-       row2.text(`gender: ${metadata[0].gender}`);
-       row3.text(`age: ${metadata[0].age}`);
-       row4.text(`location: ${metadata[0].location}`);
-       row5.text(`bbtype: ${metadata[0].bbtype}`);
-       row6.text(`wfreq: ${metadata[0].wfreq}`);
-
-  };
+// Arrow function is used to filter and get the sample values, out_ids and otu_labels for that filtered sample id
+// To check if the id property of each sample object from the array sampleData is equal to the sampleId
+        
+           let filteredValue = sampleData.filter(sample => sample.id == sampleId)
+           let sampleValData = filteredValue[0]
+           console.log("filtered value",filteredValue)
+           console.log("samplevalue",sampleValData)
+           let sample_values = sampleValData.sample_values;
+           let otu_ids= sampleValData.otu_ids;
+           let otu_labels = sampleValData.otu_labels;
+        //    To plot the bubble chart
+           let trace2 = {
+            x:otu_ids,
+            y: sample_values,
+            text: otu_labels,
+            mode: 'markers',
+            marker:{
+             color : otu_ids,
+             size : sample_values,
+             colorscale: 'Earth'
+           }
+    };
+    
+    // Data array
+        let dataTrace2 = [trace2];
+    // Apply a title to the layout
+        let layout2 = {
+                title:"<b>Bubble Chart for each id based <br> on sample size</b><br>",
+                // showlegend: false,
+                height: 800,
+                width: 800
+              };
        
-  // Adding the ids to the dropdown
-  let dropdown = d3.select("select");
-
-  for (let i = 0; i < names.length; i++) {
-    dropdown.append("option").text(names[i]);
-  };
-
-  init();
-
-});
-
-//------------------------------------------------------------------------------------------------------------------------------
-// Function for changing the ID and the visualizations.
-
-function optionChanged(id) {
-
-  for (let i=0; i<samples.length; i++) {
-      if (String(samples[i].id) == id) {
-          selected_id = samples[i];
-      }
-  };
-
-  // Updating the Bar Chart
-
-  updateBarChart(selected_id);
-
-  // Updating the Bubble Chart
-
-  updateBubbleChart(selected_id);
-
-  // Updating the Metadata Info
-
-  updateMetadata(id);
-
-};
-
-//------------------------------------------------------------------------------------------------------------------------------
-// Function to Update Bar Chart.
-
-function updateBarChart(selected_id) {
-
-  // Setting the variables.
-  sample_values = selected_id.sample_values.slice(0,10);
-  sample_values.reverse();
-  otu_ids = selected_id.otu_ids.slice(0,10);
-  otu_ids.reverse();
-  otu_labels = selected_id.otu_labels.slice(0,10);
-  otu_labels.reverse();
-
-  otu_ids = otu_ids.map(id => `OTU ${id} `);
-
-  // Restyling the Plot.
-  Plotly.restyle("bar", "x",[sample_values]);
-  Plotly.restyle("bar", "y",[otu_ids]);
-  Plotly.restyle("bar", "hovertext",[otu_labels]);
-};
-
-//------------------------------------------------------------------------------------------------------------------------------
-// Function to Update Bubble Chart.
-
-function updateBubbleChart(selected_id) {
-
-  // Setting the variables.
-  sample_values = selected_id.sample_values;
-  otu_ids = selected_id.otu_ids;
-  otu_labels = selected_id.otu_labels;
-
-  // Restyling the Plot.
-  Plotly.restyle("bubble", "x", [otu_ids]);
-  Plotly.restyle("bubble", "y", [sample_values]);
-  Plotly.restyle("bubble", "text", [otu_labels]);
-  Plotly.restyle("bubble", "marker.size", [sample_values]);
-  Plotly.restyle("bubble", "marker.color", [otu_ids]);
-};
-
-//------------------------------------------------------------------------------------------------------------------------------
-// Function to Update the Metadata Info.
-
-function updateMetadata(id) {
+        Plotly.newPlot("bubble", dataTrace2, layout2);
+      
+        
+    })};
+    bubbleChart();
     
-  // Loop through the metadata to find the specific id.
-  for (let j=0; j<metadata.length; j++) {
-      if (metadata[j].id == id) {
-          selected_metadata = metadata[j];
-      }
-  };
-
-  // Update Metadata Info
-  d3.select("#id").text(`id: ${selected_metadata.id}`);
-  d3.select("#ethnicity").text(`ethnicity: ${selected_metadata.ethnicity}`);
-  d3.select("#gender").text(`gender: ${selected_metadata.gender}`);
-  d3.select("#age").text(`age: ${selected_metadata.age}`);
-  d3.select("#location").text(`location: ${selected_metadata.location}`);
-  d3.select("#bbtype").text(`bbtype: ${selected_metadata.bbtype}`);
-  d3.select("#wfreq").text(`wfreq: ${selected_metadata.wfreq}`);
-
-};
-
-//------------------------------------------------------------------------------------------------------------------------------
-
-
-
+    
+    function sampleMetadata(sampleId){
+        d3.json(url).then(function(data) {
+            console.log("sample id is:", sampleId)
+            let MetadataSample = d3.select("#sample-metadata").html("")
+            let metaData = data.metadata;
+            let M_filteredValue = metaData.filter(sample => sample.id == sampleId)[0]
+            // let M_sampleValData = M_filteredValue[0]
+            console.log("Meta filtered value",M_filteredValue)
+            Object.entries(M_filteredValue ).forEach(([key, value]) => {
+                    MetadataSample.append("h6").text(`${key}: ${value}`)});
+          
+        
+    })};
+   
+    sampleMetadata();
+    
